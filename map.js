@@ -15,7 +15,6 @@
  *   https://groups.google.com/forum/#!topic/d3-js/OAJgdKtn1TE
  *   https://groups.google.com/forum/#!topic/d3-js/sg4pnuzWZUU
  */
-
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 const ZOOM_THRESHOLD = [0.3, 7];
@@ -26,118 +25,143 @@ const ZOOM_IN_STEP = 2;
 const ZOOM_OUT_STEP = 1 / ZOOM_IN_STEP;
 const HOVER_COLOR = "#d36f80"
 
-// --------------- Event handler ---------------
-const zoom = d3
-    .zoom()
-    .scaleExtent(ZOOM_THRESHOLD)
-    .on("zoom", zoomHandler);
+processData(testData, "linear");
 
-var scale = d3.scaleLog().domain([1000, 40000])
-        .range(["brown", "steelblue"]);
-
-function color(d, i) {
-    return scale(testData[d.properties.name]);
+function processData(data, type) {
+  var lmao = []
+  for (var key in data) {
+    lmao.push(data[key])
+  }
+  lmao.sort()
+  mini = lmao[parseInt(lmao.length * 0.2)]
+  maxi = lmao[parseInt(lmao.length * 0.7)]
+  console.log((mini, maxi))
+  console.log(mini)
+    var scale = d3.scaleLinear().domain([mini, maxi])
+        .range(["darkred", "steelblue"]);
+    // Must generate map first, then scale lol.
+    generateMap(scale, data);
+    generateScale(scale, type);
 }
 
-function zoomHandler() {
-    g.attr("transform", d3.event.transform);
+function generateScale(scale, type) {
+  var svg = d3.select("svg");
+  if (type === "linear") {
+    svg.append("g")
+        .attr("class", "legendLinear")
+        .attr("transform", "translate(20,20)");
+
+    var legendLinear = d3.legendColor()
+        .shapeWidth(30)
+        .cells(10)
+        .orient('horizontal')
+        .scale(scale);
+
+    svg.select(".legendLinear")
+        .call(legendLinear);
+  }
 }
 
-function mouseOverHandler(d, i) {
-    d3.select(this).attr("fill", HOVER_COLOR)
-}
+function generateMap(scale, data) {
+    const zoom = d3
+        .zoom()
+        .scaleExtent(ZOOM_THRESHOLD)
+        .on("zoom", zoomHandler);
 
-function mouseOutHandler(d, i) {
-    d3.select(this).attr("fill", color(d,i))
-}
+    function color(d, i) {
+      if (d.properties.name in testData) {
+        return scale(testData[d.properties.name]);
+      } else {
+        return 0;
+      }
+    }
 
-function clickHandler(d, i) {
-    d3.select("#map__text").text(`You've selected ${d.properties.name} District`)
-}
+    function zoomHandler() {
+        g.attr("transform", d3.event.transform);
+    }
 
-function clickToZoom(zoomStep) {
-    svg
-        .transition()
-        .duration(ZOOM_DURATION)
-        .call(zoom.scaleBy, zoomStep);
-}
+    function mouseOverHandler(d, i) {
+        d3.select(this).attr("fill", HOVER_COLOR)
+    }
 
-d3.select("#btn-zoom--in").on("click", () => clickToZoom(ZOOM_IN_STEP));
-d3.select("#btn-zoom--out").on("click", () => clickToZoom(ZOOM_OUT_STEP));
+    function mouseOutHandler(d, i) {
+        d3.select(this).attr("fill", color(d, i))
+    }
 
-//  --------------- Step 1 ---------------
-// Prepare SVG container for placing the map,
-// and overlay a transparent rectangle for pan and zoom.
-const svg = d3
-    .select("#map__container")
-    .append("svg")
-    .attr("width", "100%")
-    .attr("height", "100%");
+    function clickHandler(d, i) {
+        d3.select("#map__text").text(`You've selected ${d.properties.name} District`)
+    }
 
-const g = svg.call(zoom).append("g");
+    function clickToZoom(zoomStep) {
+        svg
+            .transition()
+            .duration(ZOOM_DURATION)
+            .call(zoom.scaleBy, zoomStep);
+    }
+    d3.select("#btn-zoom--in").on("click", () => clickToZoom(ZOOM_IN_STEP));
+    d3.select("#btn-zoom--out").on("click", () => clickToZoom(ZOOM_OUT_STEP));
 
-g
-    .append("rect")
-    .attr("width", WIDTH * OVERLAY_MULTIPLIER)
-    .attr("height", HEIGHT * OVERLAY_MULTIPLIER)
-    .attr(
-        "transform",
-        `translate(-${WIDTH * OVERLAY_OFFSET},-${HEIGHT * OVERLAY_OFFSET})`
-    )
-    .style("fill", "none")
-    .style("pointer-events", "all");
+    //  --------------- Step 1 ---------------
+    // Prepare SVG container for placing the map,
+    // and overlay a transparent rectangle for pan and zoom.
+    const svg = d3
+        .select("#map__container")
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%");
 
-// --------------- Step 2 ---------------
-// Project GeoJSON from 3D to 2D plane, and set
-// projection config.
-const projection = d3
-    .geoMercator()
-    .center([-87, 35])
-    .scale(1000)
-    .translate([WIDTH / 2, HEIGHT / 2]);
+    const g = svg.call(zoom).append("g");
 
-// --------------- Step 3 ---------------
-// Prepare SVG path and color, import the
-// effect from above projection.
-const path = d3.geoPath().projection(projection);
-
-// --------------- Step 4 ---------------
-// 1. Plot the map from data source `hongkong`
-// 2. Place the district name in the map
-
-renderMap(unitedstates);
-//renderMap(canada);
-
-function renderMap(root) {
-    // Draw districts and register event listeners
     g
-        .append("g")
-        .selectAll("path")
-        .data(root.features)
-        .enter()
-        .append("path")
-        .attr("d", path)
-        .attr("fill", (d, i) => color(d, i))
-        .attr("stroke", "#FFF")
-        .attr("stroke-width", 0.5)
-        .on("mouseover", mouseOverHandler)
-        .on("mouseout", mouseOutHandler)
-        .on("click", clickHandler);
+        .append("rect")
+        .attr("width", WIDTH * OVERLAY_MULTIPLIER)
+        .attr("height", HEIGHT * OVERLAY_MULTIPLIER)
+        .attr(
+            "transform",
+            `translate(-${WIDTH * OVERLAY_OFFSET},-${HEIGHT * OVERLAY_OFFSET})`
+        )
+        .style("fill", "none")
+        .style("pointer-events", "all");
 
-    console.log(root);
+    // --------------- Step 2 ---------------
+    // Project GeoJSON from 3D to 2D plane, and set
+    // projection config.
+    const projection = d3
+        .geoMercator()
+        .center([-87, 35])
+        .scale(1000)
+        .translate([WIDTH / 2, HEIGHT / 2]);
+
+    // --------------- Step 3 ---------------
+    // Prepare SVG path and color, import the
+    // effect from above projection.
+    const path = d3.geoPath().projection(projection);
+
+    // --------------- Step 4 ---------------
+    // 1. Plot the map from data source `hongkong`
+    // 2. Place the district name in the map
+
+    renderMap(unitedstates);
+    renderMap(canada);
+
+    function renderMap(root) {
+        // Draw districts and register event listeners
+        g
+            .append("g")
+            .selectAll("path")
+            .data(root.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("fill", (d, i) => color(d, i))
+            .attr("stroke", "#FFF")
+            .attr("stroke-width", 0.5)
+            .on("mouseover", mouseOverHandler)
+            .on("mouseout", mouseOutHandler)
+            .on("click", clickHandler);
+
+        console.log(root);
+    }
+
+
 }
-
-var log = d3.scaleLog()
-    .domain([ 0.1, 100, 1000 ])
-    .range(["rgb(46, 73, 123)", "rgb(71, 187, 94)"]);
-
-svg.append("g")
-  .attr("class", "legendLog")
-  .attr("transform", "translate(20,20)");
-
-var logLegend = d3.legendColor()
-    .cells([1000, 10000,100000])
-    .scale(scale);
-
-svg.select(".legendLog")
-  .call(logLegend);
